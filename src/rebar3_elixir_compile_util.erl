@@ -187,7 +187,7 @@ convert_lock(Lock, [Dep | Deps], Level) ->
             convert_lock(Lock, Deps, Level)
     end.
 
-get_hex_deps(Name, {hex, Pkg, Vsn, _Hash, _Manager, SubDeps, "hexpm"}, Level) ->
+get_hex_deps(Name, {hex, Pkg, Vsn, _Hash, _Manager, SubDeps, <<"hexpm">>}, Level) ->
     RebarDeps = {rebar3_elixir_compile_util:to_binary(Name),
         {elixir, rebar3_elixir_compile_util:to_string(Pkg),
             rebar3_elixir_compile_util:to_string(Vsn)}, Level},
