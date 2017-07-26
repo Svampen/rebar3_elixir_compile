@@ -165,17 +165,20 @@ convert_lock(_Lock, [], _Level) ->
 
 convert_lock(Lock, [Dep | Deps], Level) ->
     case Dep of
-        {Name, {hex, Pkg, Vsn, _Hash, _Manager, SubDeps}} ->
-            RebarDep = {rebar3_elixir_compile_util:to_binary(Name), {elixir, rebar3_elixir_compile_util:to_string(Pkg), rebar3_elixir_compile_util:to_string(Vsn)}, Level},
+        {Name, Hex} when is_tuple(Hex) ->
+            {RebarDep, SubDeps} = get_hex_deps(Hex, Level),
             case {SubDeps, is_app_in_code_path(Name)} of
               {[], true} ->
                 convert_lock(Lock, Deps, Level);
               {[], false} ->  
                 lists:ukeymerge(1, convert_lock(Lock, Deps, Level), [RebarDep]);
               {SubDeps_, true} ->
-                  lists:ukeymerge(1, convert_lock(Lock, Deps, Level), convert_lock(Lock, SubDeps_, Level+1));
+                  lists:ukeymerge(1, convert_lock(Lock, Deps, Level),
+                      convert_lock(Lock, SubDeps_, Level+1));
               {SubDeps_, false} ->    
-                  lists:ukeymerge(1, lists:ukeymerge(1, convert_lock(Lock, Deps, Level), convert_lock(Lock, SubDeps_, Level+1)), [RebarDep])
+                  lists:ukeymerge(1, lists:ukeymerge(1,
+                      convert_lock(Lock, Deps, Level),
+                      convert_lock(Lock, SubDeps_, Level+1)), [RebarDep])
             end;
         {Name, _VSN, _Opts} ->  
             SubDep = lists:keyfind(Name, 1, Lock),
@@ -183,6 +186,17 @@ convert_lock(Lock, [Dep | Deps], Level) ->
         _ -> 
             convert_lock(Lock, Deps, Level)
     end.
+
+get_hex_deps({Name, {hex, Pkg, Vsn, _Hash, _Manager, SubDeps, "hexpm"}}, Level) ->
+    RebarDeps = {rebar3_elixir_compile_util:to_binary(Name),
+        {elixir, rebar3_elixir_compile_util:to_string(Pkg),
+            rebar3_elixir_compile_util:to_string(Vsn)}, Level},
+    {RebarDeps, SubDeps};
+get_hex_deps({Name, {hex, Pkg, Vsn, _Hash, _Manager, SubDeps}}, Level) ->
+    RebarDeps = {rebar3_elixir_compile_util:to_binary(Name),
+        {elixir, rebar3_elixir_compile_util:to_string(Pkg),
+            rebar3_elixir_compile_util:to_string(Vsn)}, Level},
+    {RebarDeps, SubDeps}.
 
 is_app_in_code_path(_Name) ->
     % Ignore cache
